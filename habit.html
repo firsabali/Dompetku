@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1d4ed8">
+    <title>Kalender Konsistensi - DompetKu</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/habit.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="page-title">
+            <span>Kalender Konsistensi</span>
+            <a href="profile.html" class="header-avatar" id="headerAvatar"
+                style="width: 34px; height: 34px; font-size: 14px;">U</a>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" id="btnTabTracker" onclick="switchTabHabit('tracker')">Tracker &
+                Kalender</button>
+            <button class="tab-btn" id="btnTabTambah" onclick="switchTabHabit('tambah')">Habit Baru</button>
+        </div>
+
+        <!-- TAB 1: TRACKER KALENDER & STATISTIK -->
+        <div id="tabTracker" class="tab-content active">
+            <div class="form-group">
+                <select id="habitSelect" class="form-control" onchange="renderHabitData()">
+                    <option value="">-- Pilih Habit --</option>
+                </select>
+            </div>
+
+            <div id="habitContent" style="display: none;">
+                <!-- Tombol Cepat Check-in Hari Ini -->
+                <button class="btn btn-primary mb-1" id="btnQuickTodayCheckIn" onclick="quickCheckInToday()">
+                    ✅ Check-in Hari Ini
+                </button>
+
+                <!-- Streak Box -->
+                <div class="streak-box" id="streakBox">
+                    <div class="streak-item">
+                        <h4 id="currentStreak">0</h4>
+                        <p>🔥 Streak Saat Ini</p>
+                    </div>
+                    <div class="streak-item">
+                        <h4 id="bestStreak">0</h4>
+                        <p>🏆 Streak Terbaik</p>
+                    </div>
+                </div>
+
+                <!-- Kalender -->
+                <div class="card">
+                    <div class="calendar-header">
+                        <button class="btn-icon btn-edit" onclick="changeMonth(-1)">&#10094; Prev</button>
+                        <h4 id="monthYearLabel" style="margin:0;">Bulan Tahun</h4>
+                        <button class="btn-icon btn-edit" onclick="changeMonth(1)">Next &#10095;</button>
+                    </div>
+                    <div class="calendar-grid">
+                        <div class="day-name">Min</div>
+                        <div class="day-name">Sen</div>
+                        <div class="day-name">Sel</div>
+                        <div class="day-name">Rab</div>
+                        <div class="day-name">Kam</div>
+                        <div class="day-name">Jum</div>
+                        <div class="day-name">Sab</div>
+                    </div>
+                    <div class="calendar-grid" id="calendarDays"></div>
+                </div>
+
+                <!-- Statistik -->
+                <div class="card">
+                    <div class="section-title">Statistik Keseluruhan</div>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                        <span class="text-success">✅ Berhasil: <strong id="statSuccess">0</strong></span>
+                        <span class="text-danger">❌ Gagal: <strong id="statFailed">0</strong></span>
+                    </div>
+                    <div class="progress-container">
+                        <div id="statProgressBar" class="progress-bar success" style="width: 0%;"></div>
+                    </div>
+                    <p style="text-align: right; font-size: 11px; color: var(--grey);" id="statPercent">0% Sukses</p>
+                </div>
+
+                <!-- Riwayat & Hapus -->
+                <div class="card">
+                    <div class="section-title">Riwayat Bulan Ini</div>
+                    <div id="historyList"></div>
+
+                    <hr style="border: 0; border-top: 1px solid var(--light-grey); margin: 18px 0 12px;">
+                    <button class="btn btn-outline"
+                        style="border-color: var(--danger); color: var(--danger); font-size: 13px;"
+                        onclick="deleteCurrentHabit()">
+                        🗑️ Hapus Habit Ini
+                    </button>
+                </div>
+            </div>
+
+            <div id="emptyHabitMsg" class="card text-center" style="color: var(--grey); font-size: 13px;">
+                Pilih atau buat kebiasaan baru pada tab <strong>Habit Baru</strong>.
+            </div>
+        </div>
+
+        <!-- TAB 2: FORM TAMBAH HABIT -->
+        <div id="tabTambah" class="tab-content card">
+            <h3>Buat Habit Baru</h3>
+            <form id="habitForm">
+                <div class="form-group">
+                    <label>Nama Habit</label>
+                    <input type="text" id="habitName" class="form-control" required
+                        placeholder="Contoh: Olahraga 30 Menit, Baca Buku">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ikon (Emoji)</label>
+                        <input type="text" id="habitEmoji" class="form-control" required placeholder="🏃" maxlength="4">
+                    </div>
+                    <div class="form-group">
+                        <label>Warna Tema</label>
+                        <input type="color" id="habitColor" class="form-control" value="#16a34a"
+                            style="height: 44px; padding: 4px;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Mulai Tanggal</label>
+                    <input type="date" id="habitStartDate" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary mt-1">Simpan Habit</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL CHECK-IN HARIAN -->
+    <div class="modal-overlay" id="checkInModal">
+        <div class="modal-box">
+            <h3 class="text-center" style="margin-bottom: 4px;" id="modalTitle">Check-in Habit</h3>
+            <p class="text-center" style="font-size: 13px; color: var(--grey); margin-bottom: 14px;" id="modalDesc">
+                Apakah kamu melakukannya pada tanggal ini?</p>
+
+            <div class="modal-actions">
+                <button class="btn btn-success" onclick="submitCheckIn('success')">✅ Berhasil</button>
+                <button class="btn btn-danger" onclick="showReasonInput()">❌ Gagal</button>
+            </div>
+
+            <div id="reasonBox" style="display: none; margin-top: 14px;">
+                <label style="font-size: 12px; font-weight: 700;">Alasan tidak melakukan:</label>
+                <input type="text" id="failReason" class="form-control mt-1" placeholder="Tuliskan alasan singkat...">
+                <button class="btn btn-primary mt-1" onclick="submitCheckIn('failed')">Simpan Alasan</button>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+                <button class="btn btn-outline btn-sm" style="flex: 1; color: var(--grey);"
+                    onclick="clearCheckIn()">Reset Tanggal</button>
+                <button class="btn btn-outline btn-sm" style="flex: 1;" onclick="closeModal()">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="dashboard.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
+            Home
+        </a>
+        <a href="transaksi.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" />
+            </svg>
+            Keuangan
+        </a>
+        <a href="aktivitas.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+            </svg>
+            Aktivitas
+        </a>
+        <a href="wishlist.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+            </svg>
+            Target
+        </a>
+        <a href="habit.html" class="nav-item active">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" />
+            </svg>
+            Habit
+        </a>
+    </nav>
+
+    <script src="js/storage.js"></script>
+    <script src="js/habit.js"></script>
+</body>
+
+</html>

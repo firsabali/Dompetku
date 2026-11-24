@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1d4ed8">
+    <title>Target & Wishlist - DompetKu</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.58);
+            backdrop-filter: blur(2px);
+            z-index: 2000;
+            padding: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-box {
+            background: #ffffff;
+            width: 100%;
+            max-width: 390px;
+            border-radius: 18px;
+            padding: 22px 20px;
+            box-shadow: 0 20px 35px rgba(15, 23, 42, 0.24);
+            text-align: left;
+            animation: modalPop 0.18s ease-out;
+        }
+
+        @keyframes modalPop {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-box h3 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 4px 0;
+        }
+
+        .modal-subtitle {
+            font-size: 13px;
+            color: #64748b;
+            margin: 0 0 16px 0;
+            line-height: 1.4;
+        }
+
+        .quick-nominal-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .quick-nominal-btn {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .quick-nominal-btn:active {
+            background: #dbeafe;
+        }
+
+        .modal-checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: #334155;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin: 14px 0 18px 0;
+            cursor: pointer;
+        }
+
+        .modal-checkbox-row input[type="checkbox"] {
+            width: 17px;
+            height: 17px;
+            accent-color: #1d4ed8;
+            flex-shrink: 0;
+        }
+
+        .modal-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .modal-actions .btn {
+            width: 100%;
+            margin: 0;
+            padding: 11px 14px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 10px;
+            justify-content: center;
+        }
+
+        .app-modal-overlay {
+            z-index: 3000 !important;
+        }
+
+        /* Kartu Input Tahapan di Form */
+        .milestone-row {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .milestone-row-top {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .milestone-row-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .mini-field-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 3px;
+        }
+
+        /* Daftar Tahapan & Status dengan Tanggal di Kartu Target */
+        .step-list-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 10px 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+        }
+
+        .step-row-item {
+            padding: 9px 0;
+            border-bottom: 1px dashed #cbd5e1;
+        }
+
+        .step-row-item:last-child {
+            border-bottom: none;
+            padding-bottom: 2px;
+        }
+
+        .step-header-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .step-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e293b;
+            line-height: 1.35;
+        }
+
+        .step-label.is-passed,
+        .step-label.is-accepted {
+            color: #059669;
+        }
+
+        .step-label.is-failed {
+            color: #dc2626;
+            text-decoration: line-through;
+        }
+
+        .step-result-tag {
+            display: inline-flex;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .step-result-tag.tag-pending {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .step-result-tag.tag-passed {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .step-result-tag.tag-accepted {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+
+        .step-result-tag.tag-failed {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .step-schedule-text {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 3px;
+            font-weight: 500;
+        }
+
+        .step-action-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 7px;
+        }
+
+        .step-pill-btn {
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #475569;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 9px;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .step-pill-btn.active-passed {
+            background: #16a34a;
+            border-color: #15803d;
+            color: #ffffff;
+        }
+
+        .step-pill-btn.active-accepted {
+            background: #059669;
+            border-color: #047857;
+            color: #ffffff;
+        }
+
+        .step-pill-btn.active-failed {
+            background: #ef4444;
+            border-color: #dc2626;
+            color: #ffffff;
+        }
+
+        .step-pill-btn:disabled {
+            opacity: 0.65;
+            cursor: default;
+        }
+
+        .btn-add-next-stage {
+            margin-top: 8px;
+            width: 100%;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px dashed #93c5fd;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .badge-gagal {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="page-title">
+            <span>Target & Wishlist</span>
+            <a href="profile.html" class="header-avatar" id="headerAvatar"
+                style="width: 34px; height: 34px; font-size: 14px;">U</a>
+        </div>
+
+        <div class="tabs">
+            <button type="button" class="tab-btn active" id="btnTabDaftar" onclick="switchTabWs('daftar')">Daftar
+                Target</button>
+            <button type="button" class="tab-btn" id="btnTabTambah" onclick="switchTabWs('tambah')">Tambah Baru</button>
+        </div>
+
+        <!-- TAB 1: DAFTAR WISHLIST -->
+        <div id="tabDaftar" class="tab-content active">
+            <input type="text" id="searchWs" class="search-box"
+                placeholder="Cari target, lamaran kerja, atau barang impian...">
+            <div id="wishlistContainer" class="card"></div>
+        </div>
+
+        <!-- TAB 2: FORM TAMBAH/EDIT WISHLIST -->
+        <div id="tabTambah" class="tab-content card">
+            <h3 id="formTitleWs">Tambah Target Baru</h3>
+            <form id="wishlistForm">
+                <input type="hidden" id="wsId">
+
+                <div class="form-group">
+                    <label>Jenis Target</label>
+                    <select id="wsType" class="form-control" required onchange="toggleWsType()">
+                        <option value="Finansial">💰 Wishlist / Target Finansial</option>
+                        <option value="Non-Finansial">🎯 Target Pencapaian Kerja & Pribadi</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Nama Barang / Target</label>
+                    <input type="text" id="wsName" class="form-control" required
+                        placeholder="Contoh: Lamar PT Maju Jaya / Beli Laptop">
+                </div>
+
+                <!-- Input Finansial -->
+                <div id="financialInputs">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Target Harga (Rp)</label>
+                            <input type="number" id="wsTargetPrice" class="form-control" required min="1"
+                                placeholder="10000000">
+                        </div>
+                        <div class="form-group">
+                            <label>Terkumpul (Rp)</label>
+                            <input type="number" id="wsCollected" class="form-control" required value="0" min="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Tahapan Non-Finansial -->
+                <div id="nonFinancialInputs"
+                    style="display: none; margin-bottom: 14px; background: var(--bg-app); padding: 12px; border-radius: 12px;">
+                    <label
+                        style="display: block; font-weight: 700; font-size: 13px; color: var(--dark-grey); margin-bottom: 4px;">
+                        📋 Tahapan Seleksi / Pencapaian
+                    </label>
+                    <p style="font-size: 11px; color: var(--grey); margin-bottom: 10px;">
+                        Pilih tanggal jadwal masing-masing tahap sejak awal. Saat diklik <strong>Lolos</strong> atau
+                        <strong>Diterima</strong>, tanggal keputusan otomatis tercatat di belakang status.
+                    </p>
+                    <div id="milestoneInputsContainer"
+                        style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px;"></div>
+                    <button type="button" class="btn btn-outline btn-sm" style="background: var(--white);"
+                        onclick="addMilestoneInput()">
+                        + Tambah Tahapan
+                    </button>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tanggal Mulai</label>
+                        <input type="date" id="wsStartDate" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Batas Waktu</label>
+                        <input type="date" id="wsTargetDate" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Status Keseluruhan</label>
+                    <select id="wsStatus" class="form-control" required>
+                        <option value="Berjalan">⏳ Berjalan</option>
+                        <option value="Selesai">🎉 Diterima / Tercapai</option>
+                        <option value="Gagal">❌ Tidak Lolos</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary mt-1" id="btnSubmitWs">Simpan Target</button>
+                <button type="button" class="btn btn-outline mt-1" id="btnCancelEditWs" style="display:none;"
+                    onclick="cancelEditWs()">Batal Edit</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL TAMBAH TABUNGAN CEPAT -->
+    <div class="modal-overlay" id="saveMoneyModal" onclick="if(event.target === this) closeSaveModal()">
+        <div class="modal-box">
+            <h3 id="saveModalTitle">Tambah Tabungan</h3>
+            <p class="modal-subtitle" id="saveModalSubtitle">Sisa target: Rp 0</p>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Nominal Tambahan
+                    (Rp)</label>
+                <input type="number" id="addSavingAmount" class="form-control" min="1" inputmode="numeric"
+                    placeholder="Masukkan nominal, misal: 100000">
+                <div class="quick-nominal-group">
+                    <button type="button" class="quick-nominal-btn" onclick="setQuickSaving(50000)">+50 rb</button>
+                    <button type="button" class="quick-nominal-btn" onclick="setQuickSaving(100000)">+100 rb</button>
+                    <button type="button" class="quick-nominal-btn" onclick="setQuickSaving(500000)">+500 rb</button>
+                    <button type="button" class="quick-nominal-btn" id="btnFillRemaining"
+                        onclick="fillRemainingSaving()">Lunasi Sisa</button>
+                </div>
+            </div>
+
+            <label class="modal-checkbox-row">
+                <input type="checkbox" id="recordAsExpense" checked>
+                <span>Catat juga sebagai Pengeluaran di Keuangan</span>
+            </label>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeSaveModal()">Batal</button>
+                <button type="button" class="btn btn-success" onclick="submitAddSaving()">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TAMBAH TAHAP LANJUTAN -->
+    <div class="modal-overlay" id="nextStageModal" onclick="if(event.target === this) closeNextStageModal()">
+        <div class="modal-box">
+            <h3>Tambah Tahap Lanjutan</h3>
+            <p class="modal-subtitle" id="nextStageSubtitle">Tambahkan jadwal seleksi berikutnya.</p>
+
+            <div class="form-group">
+                <label style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Nama Tahap</label>
+                <input type="text" id="nextStageName" class="form-control"
+                    placeholder="Contoh: Interview User / Psikotes / Offering">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 18px;">
+                <label style="font-size: 13px; font-weight: 600; margin-bottom: 6px; display: block;">Tanggal Jadwal
+                    (Opsional)</label>
+                <input type="date" id="nextStageDate" class="form-control">
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="closeNextStageModal()">Batal</button>
+                <button type="button" class="btn btn-primary" onclick="submitNextStage()">Tambah Tahap</button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="dashboard.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
+            Home
+        </a>
+        <a href="transaksi.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" />
+            </svg>
+            Keuangan
+        </a>
+        <a href="aktivitas.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+            </svg>
+            Aktivitas
+        </a>
+        <a href="wishlist.html" class="nav-item active">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+            </svg>
+            Target
+        </a>
+        <a href="habit.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" />
+            </svg>
+            Habit
+        </a>
+    </nav>
+
+    <script src="js/storage.js"></script>
+    <script src="js/wishlist.js"></script>
+</body>
+
+</html>

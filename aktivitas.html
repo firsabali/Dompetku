@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1d4ed8">
+    <title>Aktivitas & Kebutuhan - DompetKu</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="page-title">
+            <span>Jurnal & Kebutuhan</span>
+            <a href="profile.html" class="header-avatar" id="headerAvatar"
+                style="width: 34px; height: 34px; font-size: 14px;">U</a>
+        </div>
+
+        <div class="tabs">
+            <button type="button" class="tab-btn active" id="btnTabAktivitas"
+                onclick="switchTabAct('aktivitas')">Aktivitas Harian</button>
+            <button type="button" class="tab-btn" id="btnTabKebutuhan" onclick="switchTabAct('kebutuhan')">List
+                Kebutuhan</button>
+        </div>
+
+        <!-- TAB 1: AKTIVITAS HARIAN -->
+        <div id="tabAktivitas" class="tab-content active">
+            <div class="card">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <label for="journalDate" style="font-weight: 700; font-size: 14px; margin: 0;">Tanggal
+                        Jurnal:</label>
+                    <input type="date" id="journalDate" class="form-control"
+                        style="width: auto; max-width: 170px; padding: 7px 10px;">
+                </div>
+                <div
+                    style="display: flex; justify-content: space-between; font-size: 12px; color: var(--grey); margin-bottom: 4px;">
+                    <span>Progres Hari Ini</span>
+                    <strong id="actProgressText" style="color: var(--primary-blue);">0 / 0 Selesai</strong>
+                </div>
+                <div class="progress-container" style="margin: 0;">
+                    <div class="progress-bar" id="actProgressBar" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 id="formTitleAct" style="margin-bottom: 12px;">Catat Aktivitas</h3>
+                <form id="activityForm">
+                    <input type="hidden" id="actId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Jam</label>
+                            <input type="time" id="actTime" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Kategori</label>
+                            <select id="actCategory" class="form-control" required>
+                                <option value="Kerja / Kuliah">💼 Kerja / Kuliah</option>
+                                <option value="Pribadi">🏠 Pribadi</option>
+                                <option value="Kesehatan">💪 Kesehatan</option>
+                                <option value="Keuangan">💰 Keuangan</option>
+                                <option value="Lainnya">📌 Lainnya</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Kegiatan / Aktivitas</label>
+                        <input type="text" id="actTitle" class="form-control" required
+                            placeholder="Contoh: Rapat tim / Mengerjakan laporan">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Prioritas</label>
+                            <select id="actPriority" class="form-control" required>
+                                <option value="Sedang">🟡 Sedang</option>
+                                <option value="Tinggi">🔴 Tinggi</option>
+                                <option value="Rendah">🟢 Rendah</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Catatan Singkat</label>
+                            <input type="text" id="actNote" class="form-control" placeholder="Opsional...">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary mt-1" id="btnSubmitAct">Simpan Aktivitas</button>
+                    <button type="button" class="btn btn-outline mt-1" id="btnCancelEditAct" style="display: none;"
+                        onclick="cancelEditAct()">Batal Edit</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="section-title">
+                    <span>📋 Daftar Aktivitas</span>
+                </div>
+                <div id="activityListContainer">
+                    <p class="text-center" style="font-size: 13px; color: var(--grey);">Belum ada aktivitas pada tanggal
+                        ini.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: LIST KEBUTUHAN -->
+        <div id="tabKebutuhan" class="tab-content">
+            <!-- Ringkasan Estimasi Kebutuhan -->
+            <div class="stats-grid" style="margin-bottom: 14px;">
+                <div class="stat-card">
+                    <h3>🛒 Belum Dibeli</h3>
+                    <div class="amount text-warning" id="needPendingCount" style="font-size: 18px;">0 Item</div>
+                    <p style="font-size: 11px; color: var(--grey); margin-top: 4px;" id="needBoughtCount">0 sudah dibeli
+                    </p>
+                </div>
+                <div class="stat-card">
+                    <h3>💵 Estimasi Biaya</h3>
+                    <div class="amount text-primary" id="needEstimatedTotal"
+                        style="font-size: 16px; color: var(--primary-blue);">Rp 0</div>
+                    <p style="font-size: 11px; color: var(--grey); margin-top: 4px;">Kebutuhan tertunda</p>
+                </div>
+            </div>
+
+            <!-- Form Tambah / Edit Kebutuhan -->
+            <div class="card">
+                <h3 id="formTitleNeed" style="margin-bottom: 12px;">Tambah Kebutuhan</h3>
+                <form id="needForm">
+                    <input type="hidden" id="needId">
+
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 2;">
+                            <label>Nama Barang / Kebutuhan</label>
+                            <input type="text" id="needName" class="form-control" required
+                                placeholder="Contoh: Beras, Sabun, Kuota Internet">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Jumlah</label>
+                            <input type="text" id="needQty" class="form-control" required value="1 pcs"
+                                placeholder="1 pcs">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Kategori</label>
+                            <select id="needCategory" class="form-control" required>
+                                <option value="Kebutuhan Pokok">🍚 Kebutuhan Pokok</option>
+                                <option value="Rumah Tangga">🏠 Rumah Tangga</option>
+                                <option value="Kerja / Kuliah">💼 Kerja / Kuliah</option>
+                                <option value="Pribadi">👕 Pribadi</option>
+                                <option value="Kesehatan">💊 Kesehatan</option>
+                                <option value="Lainnya">📦 Lainnya</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Prioritas</label>
+                            <select id="needPriority" class="form-control" required>
+                                <option value="Tinggi">🔴 Mendesak / Tinggi</option>
+                                <option value="Sedang" selected>🟡 Sedang</option>
+                                <option value="Rendah">🟢 Rendah</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Estimasi Harga (Rp)</label>
+                            <input type="number" id="needPrice" class="form-control" min="0" value="0"
+                                placeholder="Opsional: 50000">
+                        </div>
+                        <div class="form-group">
+                            <label>Catatan</label>
+                            <input type="text" id="needNote" class="form-control" placeholder="Opsional...">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary mt-1" id="btnSubmitNeed">Simpan ke List</button>
+                    <button type="button" class="btn btn-outline mt-1" id="btnCancelEditNeed" style="display: none;"
+                        onclick="cancelEditNeed()">Batal Edit</button>
+                </form>
+            </div>
+
+            <!-- Daftar Kebutuhan -->
+            <div class="card">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px;">
+                    <span style="font-weight: 700; font-size: 15px;">🛍️ Daftar Belanja & Kebutuhan</span>
+                    <select id="filterNeedStatus"
+                        style="padding: 5px 8px; border-radius: 8px; border: 1px solid var(--light-grey); font-size: 12px; font-weight: 600; background: var(--white);">
+                        <option value="all">Semua</option>
+                        <option value="pending">Belum Dibeli</option>
+                        <option value="bought">Sudah Dibeli</option>
+                    </select>
+                </div>
+                <input type="text" id="searchNeed" class="search-box" placeholder="Cari barang kebutuhan...">
+                <div id="needsListContainer">
+                    <p class="text-center" style="font-size: 13px; color: var(--grey);">Belum ada daftar kebutuhan.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigasi Bawah -->
+    <nav class="bottom-nav">
+        <a href="dashboard.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
+            Home
+        </a>
+        <a href="transaksi.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" />
+            </svg>
+            Keuangan
+        </a>
+        <a href="aktivitas.html" class="nav-item active">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+            </svg>
+            Aktivitas
+        </a>
+        <a href="wishlist.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+            </svg>
+            Target
+        </a>
+        <a href="habit.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" />
+            </svg>
+            Habit
+        </a>
+    </nav>
+
+    <script src="js/storage.js"></script>
+    <script src="js/aktivitas.js"></script>
+</body>
+
+</html>

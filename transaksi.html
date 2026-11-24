@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#1d4ed8">
+    <title>Keuangan - DompetKu</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="page-title">
+            <span>Catatan Keuangan</span>
+            <a href="profile.html" class="header-avatar" id="headerAvatar"
+                style="width: 34px; height: 34px; font-size: 14px;">U</a>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" id="btnTabTambah" onclick="switchTab('tambah')">Catat Baru</button>
+            <button class="tab-btn" id="btnTabRiwayat" onclick="switchTab('riwayat')">Riwayat</button>
+        </div>
+
+        <!-- TAB 1: FORM TAMBAH TRANSAKSI -->
+        <div id="tabTambah" class="tab-content active card">
+            <h3 id="formTitle">Tambah Transaksi</h3>
+            <form id="transaksiForm">
+                <input type="hidden" id="txId">
+
+                <div class="form-group">
+                    <label>Jenis Transaksi</label>
+                    <select id="txType" class="form-control" required>
+                        <option value="Pengeluaran">💸 Pengeluaran</option>
+                        <option value="Pemasukan">💰 Pemasukan</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nominal (Rp)</label>
+                    <input type="number" id="txAmount" class="form-control" required min="1"
+                        placeholder="Contoh: 25000">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Kategori Utama</label>
+                        <select id="txCategory" class="form-control" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Sub Kategori</label>
+                        <select id="txSubCategory" class="form-control" required></select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Tanggal</label>
+                    <input type="date" id="txDate" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Keterangan</label>
+                    <input type="text" id="txDesc" class="form-control" required
+                        placeholder="Contoh: Makan siang nasi padang">
+                </div>
+
+                <button type="submit" class="btn btn-primary mt-1" id="btnSubmitForm">Simpan Transaksi</button>
+                <button type="button" class="btn btn-outline mt-1" id="btnCancelEdit" style="display:none;"
+                    onclick="cancelEdit()">Batal Edit</button>
+            </form>
+        </div>
+
+        <!-- TAB 2: RIWAYAT TRANSAKSI -->
+        <div id="tabRiwayat" class="tab-content">
+            <input type="text" id="searchTx" class="search-box" placeholder="Cari keterangan atau kategori...">
+
+            <div class="filters">
+                <select id="filterType">
+                    <option value="Semua">Semua Jenis</option>
+                    <option value="Pemasukan">Pemasukan</option>
+                    <option value="Pengeluaran">Pengeluaran</option>
+                </select>
+                <select id="filterMonth">
+                    <option value="Semua">Semua Bulan</option>
+                    <option value="01">Januari</option>
+                    <option value="02">Februari</option>
+                    <option value="03">Maret</option>
+                    <option value="04">April</option>
+                    <option value="05">Mei</option>
+                    <option value="06">Juni</option>
+                    <option value="07">Juli</option>
+                    <option value="08">Agustus</option>
+                    <option value="09">September</option>
+                    <option value="10">Oktober</option>
+                    <option value="11">November</option>
+                    <option value="12">Desember</option>
+                </select>
+                <select id="filterYear">
+                    <option value="Semua">Semua Tahun</option>
+                </select>
+            </div>
+
+            <div class="stats-grid" style="margin-bottom: 12px;">
+                <div class="stat-card" style="padding: 12px;">
+                    <h3>Masuk (Filter)</h3>
+                    <div class="amount text-success" id="filteredIncome" style="font-size: 14px;">Rp 0</div>
+                </div>
+                <div class="stat-card" style="padding: 12px;">
+                    <h3>Keluar (Filter)</h3>
+                    <div class="amount text-danger" id="filteredExpense" style="font-size: 14px;">Rp 0</div>
+                </div>
+            </div>
+
+            <div id="transactionList" class="card"></div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="dashboard.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
+            Home
+        </a>
+        <a href="transaksi.html" class="nav-item active">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" />
+            </svg>
+            Keuangan
+        </a>
+        <a href="aktivitas.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+            </svg>
+            Aktivitas
+        </a>
+        <a href="wishlist.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+            </svg>
+            Target
+        </a>
+        <a href="habit.html" class="nav-item">
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z" />
+            </svg>
+            Habit
+        </a>
+    </nav>
+
+    <script src="js/storage.js"></script>
+    <script src="js/transaksi.js"></script>
+</body>
+
+</html>
