@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dompetku-pro-v14';
+const CACHE_NAME = 'dompetku-pro-v17';
 
 const ASSETS_TO_CACHE = [
     './',

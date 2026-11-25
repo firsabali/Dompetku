@@ -1,343 +1,472 @@
-let currentMonth = new Date().getMonth();
-let currentYear = new Date().getFullYear();
-let selectedDateStr = '';
+(function () {
+    let selectedHabitId = null;
+    let viewYear = new Date().getFullYear();
+    let viewMonth = new Date().getMonth();
 
-window.switchTabHabit = function (tabName) {
-    document.getElementById('tabTracker').classList.toggle('active', tabName === 'tracker');
-    document.getElementById('tabTambah').classList.toggle('active', tabName === 'tambah');
-    document.getElementById('btnTabTracker').classList.toggle('active', tabName === 'tracker');
-    document.getElementById('btnTabTambah').classList.toggle('active', tabName === 'tambah');
-
-    if (tabName === 'tracker') {
-        loadHabitSelect();
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
     }
-};
 
-function loadHabitSelect() {
-    const dataUser = Storage.getUserData();
-    const habits = dataUser.habits || [];
-    const select = document.getElementById('habitSelect');
-
-    const currentVal = select.value;
-    select.innerHTML = '<option value="">-- Pilih Habit --</option>';
-    habits.forEach(h => {
-        select.innerHTML += `<option value="${h.id}">${h.emoji} ${h.name}</option>`;
-    });
-
-    if (currentVal && habits.find(h => h.id === currentVal)) {
-        select.value = currentVal;
-    } else if (habits.length > 0) {
-        select.value = habits[0].id;
-    } else {
-        select.value = '';
+    function getTodayStr() {
+        if (typeof getLocalTodayStr === 'function') return getLocalTodayStr();
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     }
-    renderHabitData();
-}
 
-document.getElementById('habitForm').addEventListener('submit', function (e) {
-    e.preventDefault();
-    const dataUser = Storage.getUserData();
-    let habits = dataUser.habits || [];
+    function parseYMD(dateStr) {
+        const [y, m, d] = String(dateStr).split('-').map(Number);
+        return new Date(y, m - 1, d);
+    }
 
-    const newHabit = {
-        id: 'hab_' + Date.now(),
-        name: document.getElementById('habitName').value.trim(),
-        emoji: document.getElementById('habitEmoji').value.trim() || '✅',
-        color: document.getElementById('habitColor').value || '#16a34a',
-        startDate: document.getElementById('habitStartDate').value,
-        records: {}
+    function formatYMD(dateObj) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    function formatIndoDate(dateStr) {
+        if (!dateStr) return '-';
+        const parts = String(dateStr).split('-');
+        if (parts.length !== 3) return dateStr;
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+        const mIdx = parseInt(parts[1], 10) - 1;
+        const day = parseInt(parts[2], 10);
+        if (mIdx >= 0 && mIdx < 12 && !isNaN(day)) {
+            return `${day} ${months[mIdx]} ${parts[0]}`;
+        }
+        return dateStr;
+    }
+
+    // Otomatis menandai hari sebelumnya yang tidak cek-in sebagai Gagal (merah permanen)
+    function syncMissedDaysAsFailed() {
+        const data = Storage.getUserData();
+        const habits = Array.isArray(data.habits) ? data.habits : [];
+        const todayStr = getTodayStr();
+        const todayDate = parseYMD(todayStr);
+        let changed = false;
+
+        habits.forEach(habit => {
+            if (!habit.records || typeof habit.records !== 'object') {
+                habit.records = {};
+            }
+            if (!habit.startDate || habit.startDate >= todayStr) return;
+
+            const cursor = parseYMD(habit.startDate);
+            while (cursor < todayDate) {
+                const dStr = formatYMD(cursor);
+                if (!habit.records[dStr] || !habit.records[dStr].status) {
+                    habit.records[dStr] = { status: 'failed', auto: true };
+                    changed = true;
+                }
+                cursor.setDate(cursor.getDate() + 1);
+            }
+        });
+
+        if (changed) {
+            data.habits = habits;
+            Storage.saveUserData(data);
+        }
+    }
+
+    // Evaluasi status tanggal: hijau untuk berhasil, merah untuk gagal atau tidak cek-in harian
+    function getEffectiveDayStatus(habit, dateStr, todayStr) {
+        if (!habit.startDate || dateStr < habit.startDate) return 'before';
+        if (dateStr > todayStr) return 'future';
+
+        const rec = habit.records && habit.records[dateStr];
+        if (rec && rec.status === 'success') return 'success';
+        if (rec && rec.status === 'failed') return 'failed';
+
+        if (dateStr < todayStr) return 'failed';
+        return 'pending';
+    }
+
+    function calculateHabitStats(habit, todayStr) {
+        let success = 0;
+        let failed = 0;
+
+        if (habit.startDate && habit.startDate <= todayStr) {
+            const cursor = parseYMD(habit.startDate);
+            const end = parseYMD(todayStr);
+
+            while (cursor <= end) {
+                const dStr = formatYMD(cursor);
+                const st = getEffectiveDayStatus(habit, dStr, todayStr);
+                if (st === 'success') success++;
+                else if (st === 'failed') failed++;
+                cursor.setDate(cursor.getDate() + 1);
+            }
+        }
+
+        const total = success + failed;
+        const pct = total > 0 ? Math.round((success / total) * 100) : 0;
+
+        let streak = 0;
+        if (habit.startDate && habit.startDate <= todayStr) {
+            const cursor = parseYMD(todayStr);
+            const start = parseYMD(habit.startDate);
+
+            if (getEffectiveDayStatus(habit, todayStr, todayStr) === 'pending') {
+                cursor.setDate(cursor.getDate() - 1);
+            }
+
+            while (cursor >= start) {
+                const dStr = formatYMD(cursor);
+                if (getEffectiveDayStatus(habit, dStr, todayStr) === 'success') {
+                    streak++;
+                    cursor.setDate(cursor.getDate() - 1);
+                } else {
+                    break;
+                }
+            }
+        }
+
+        return { success, failed, pct, streak };
+    }
+
+    window.switchTabHabit = function (tabName) {
+        const isBuat = tabName === 'buat';
+        document.getElementById('tabTracker').classList.toggle('active', !isBuat);
+        document.getElementById('tabBuat').classList.toggle('active', isBuat);
+        document.getElementById('btnTabTracker').classList.toggle('active', !isBuat);
+        document.getElementById('btnTabBuat').classList.toggle('active', isBuat);
+
+        if (isBuat) {
+            if (!document.getElementById('habitId').value) {
+                document.getElementById('habitStartDate').value = getTodayStr();
+            }
+        } else {
+            renderHabitPage();
+        }
     };
 
-    habits.push(newHabit);
-    dataUser.habits = habits;
-    Storage.saveUserData(dataUser);
+    window.selectHabit = function (id) {
+        selectedHabitId = String(id);
+        renderHabitPage();
+    };
 
-    AppToast('Habit baru ditambahkan');
-    this.reset();
-    document.getElementById('habitStartDate').value = getLocalTodayStr();
-
-    switchTabHabit('tracker');
-    document.getElementById('habitSelect').value = newHabit.id;
-    renderHabitData();
-});
-
-window.renderHabitData = function () {
-    const habitId = document.getElementById('habitSelect').value;
-    const content = document.getElementById('habitContent');
-    const emptyMsg = document.getElementById('emptyHabitMsg');
-
-    if (!habitId) {
-        content.style.display = 'none';
-        emptyMsg.style.display = 'block';
-        return;
-    }
-
-    content.style.display = 'block';
-    emptyMsg.style.display = 'none';
-
-    const dataUser = Storage.getUserData();
-    const habit = dataUser.habits.find(h => h.id === habitId);
-    const themeColor = habit.color || '#16a34a';
-
-    const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-    document.getElementById('monthYearLabel').innerText = `${monthNames[currentMonth]} ${currentYear}`;
-
-    const calendarDays = document.getElementById('calendarDays');
-    calendarDays.innerHTML = '';
-
-    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-    for (let i = 0; i < firstDay; i++) {
-        calendarDays.innerHTML += '<div></div>';
-    }
-
-    const todayStr = getLocalTodayStr();
-
-    for (let i = 1; i <= daysInMonth; i++) {
-        const m = String(currentMonth + 1).padStart(2, '0');
-        const d = String(i).padStart(2, '0');
-        const dateStr = `${currentYear}-${m}-${d}`;
-
-        let statusClass = '';
-        let customStyle = '';
-        let innerHtml = i;
-
-        const isBeforeStart = dateStr < habit.startDate;
-        const isFuture = dateStr > todayStr;
-        const isToday = dateStr === todayStr;
-
-        if (habit.records && habit.records[dateStr]) {
-            if (habit.records[dateStr].status === 'success') {
-                statusClass = 'success';
-                customStyle = `background-color: ${themeColor};`;
-                innerHtml = habit.emoji;
-            } else if (habit.records[dateStr].status === 'failed') {
-                statusClass = 'failed';
-                innerHtml = '❌';
-            }
+    window.changeHabitMonth = function (delta) {
+        viewMonth += delta;
+        if (viewMonth < 0) {
+            viewMonth = 11;
+            viewYear -= 1;
+        } else if (viewMonth > 11) {
+            viewMonth = 0;
+            viewYear += 1;
         }
+        renderHabitPage();
+    };
 
-        const disabledClass = (isBeforeStart || isFuture) ? 'disabled' : '';
-        const todayClass = isToday ? 'today' : '';
+    window.setHabitDayStatus = function (habitId, dateStr, newStatus) {
+        const todayStr = getTodayStr();
+        const data = Storage.getUserData();
+        const idx = (data.habits || []).findIndex(h => String(h.id) === String(habitId));
+        if (idx === -1) return;
 
-        calendarDays.innerHTML += `
-            <div class="cal-day ${statusClass} ${disabledClass} ${todayClass}"
-                 style="${customStyle}"
-                 onclick="openCheckIn('${dateStr}', ${isBeforeStart}, ${isFuture})">
-                ${innerHtml}
-            </div>
-        `;
-    }
-    calculateStats(habit, themeColor);
-};
+        const habit = data.habits[idx];
+        const currentStatus = getEffectiveDayStatus(habit, dateStr, todayStr);
 
-window.changeMonth = function (step) {
-    currentMonth += step;
-    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-    renderHabitData();
-};
-
-window.quickCheckInToday = function () {
-    const habitId = document.getElementById('habitSelect').value;
-    if (!habitId) return;
-    const dataUser = Storage.getUserData();
-    const habit = dataUser.habits.find(h => h.id === habitId);
-    const todayStr = getLocalTodayStr();
-
-    if (todayStr < habit.startDate) {
-        AppModal.show({ title: 'Belum Dimulai', message: `Habit ini dijadwalkan mulai pada ${habit.startDate}.`, icon: '📅', type: 'alert' });
-        return;
-    }
-    openCheckIn(todayStr, false, false);
-};
-
-window.openCheckIn = function (dateStr, isBeforeStart, isFuture) {
-    if (isBeforeStart || isFuture) return;
-
-    const dataUser = Storage.getUserData();
-    const habitId = document.getElementById('habitSelect').value;
-    const habit = dataUser.habits.find(h => h.id === habitId);
-
-    selectedDateStr = dateStr;
-    document.getElementById('modalTitle').innerText = `${habit.emoji} ${habit.name}`;
-    document.getElementById('modalDesc').innerText = `Tanggal: ${dateStr}`;
-    document.getElementById('reasonBox').style.display = 'none';
-    document.getElementById('failReason').value = '';
-    document.getElementById('checkInModal').classList.add('active');
-};
-
-window.closeModal = function () {
-    document.getElementById('checkInModal').classList.remove('active');
-};
-
-window.showReasonInput = function () {
-    document.getElementById('reasonBox').style.display = 'block';
-};
-
-window.submitCheckIn = function (status) {
-    let reason = '';
-    if (status === 'failed') {
-        reason = document.getElementById('failReason').value.trim();
-        if (!reason) {
-            AppModal.show({ title: 'Alasan Diperlukan', message: 'Tuliskan alasan singkat agar bisa menjadi bahan evaluasi.', icon: '✍️', type: 'alert' });
+        // Status yang sudah hijau (success) atau merah (failed) bersifat paten dan tidak bisa diubah
+        if (currentStatus === 'success' || currentStatus === 'failed') {
+            if (typeof AppToast === 'function') {
+                AppToast('Status sudah permanen dan tidak dapat diubah');
+            }
             return;
         }
-    }
 
-    const dataUser = Storage.getUserData();
-    const habitId = document.getElementById('habitSelect').value;
-    const habitIndex = dataUser.habits.findIndex(h => h.id === habitId);
+        if (currentStatus !== 'pending') return;
 
-    if (!dataUser.habits[habitIndex].records) {
-        dataUser.habits[habitIndex].records = {};
-    }
-    dataUser.habits[habitIndex].records[selectedDateStr] = { status, reason };
-
-    Storage.saveUserData(dataUser);
-    closeModal();
-    renderHabitData();
-    AppToast(status === 'success' ? 'Check-in berhasil!' : 'Catatan evaluasi disimpan');
-};
-
-window.clearCheckIn = function () {
-    const dataUser = Storage.getUserData();
-    const habitId = document.getElementById('habitSelect').value;
-    const habitIndex = dataUser.habits.findIndex(h => h.id === habitId);
-    if (habitIndex !== -1 && dataUser.habits[habitIndex].records) {
-        delete dataUser.habits[habitIndex].records[selectedDateStr];
-        Storage.saveUserData(dataUser);
-    }
-    closeModal();
-    renderHabitData();
-};
-
-window.deleteCurrentHabit = function () {
-    const habitId = document.getElementById('habitSelect').value;
-    if (!habitId) return;
-
-    AppModal.show({
-        title: 'Hapus Habit',
-        message: 'Yakin ingin menghapus habit ini beserta seluruh riwayat kalendernya?',
-        type: 'confirm',
-        icon: '🗑️',
-        danger: true,
-        confirmText: 'Ya, Hapus',
-        onConfirm: () => {
-            const dataUser = Storage.getUserData();
-            dataUser.habits = dataUser.habits.filter(h => h.id !== habitId);
-            Storage.saveUserData(dataUser);
-            loadHabitSelect();
-            AppToast('Habit dihapus');
+        if (!habit.records || typeof habit.records !== 'object') {
+            habit.records = {};
         }
-    });
-};
 
-function parseLocalYMD(dateStr) {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    return new Date(y, m - 1, d);
-}
+        habit.records[dateStr] = { status: newStatus };
+        Storage.saveUserData(data);
+        renderHabitPage();
 
-function formatLocalYMD(dateObj) {
-    const y = dateObj.getFullYear();
-    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const d = String(dateObj.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-}
+        if (typeof AppToast === 'function') {
+            AppToast(newStatus === 'success'
+                ? `Berhasil tercatat (${formatIndoDate(dateStr)})`
+                : `Gagal tercatat (${formatIndoDate(dateStr)})`
+            );
+        }
+    };
 
-function calculateStats(habit, themeColor) {
-    const records = habit.records || {};
-    const dates = Object.keys(records).sort();
+    window.setTodayHabitStatus = function (status) {
+        if (!selectedHabitId) return;
+        setHabitDayStatus(selectedHabitId, getTodayStr(), status);
+    };
 
-    let bestStreak = 0;
-    let tempStreak = 0;
-    let prevSuccessDate = null;
-    let successCount = 0;
-    let failedCount = 0;
-    let historyHtml = '';
+    window.handleCalendarCellClick = function (dateStr) {
+        if (!selectedHabitId) return;
+        const data = Storage.getUserData();
+        const habit = (data.habits || []).find(h => String(h.id) === String(selectedHabitId));
+        if (!habit) return;
 
-    dates.forEach(dateStr => {
-        const rec = records[dateStr];
-        const [recYear, recMonth] = dateStr.split('-').map(Number);
+        const todayStr = getTodayStr();
+        const current = getEffectiveDayStatus(habit, dateStr, todayStr);
 
-        if (rec.status === 'success') {
-            successCount++;
-            const curDate = parseLocalYMD(dateStr);
-            if (prevSuccessDate) {
-                const diffDays = Math.round((curDate - prevSuccessDate) / 86400000);
-                tempStreak = (diffDays === 1) ? tempStreak + 1 : 1;
-            } else {
-                tempStreak = 1;
+        if (current === 'success' || current === 'failed') {
+            if (typeof AppToast === 'function') {
+                AppToast('Status tanggal ini sudah permanen');
             }
-            prevSuccessDate = curDate;
-            if (tempStreak > bestStreak) bestStreak = tempStreak;
-        } else {
-            failedCount++;
-            tempStreak = 0;
-            prevSuccessDate = null;
+            return;
         }
 
-        if ((recMonth - 1) === currentMonth && recYear === currentYear) {
-            historyHtml = `
-                <div class="list-item">
-                    <div>
-                        <h4 style="font-size: 13px;">${dateStr}</h4>
-                        ${rec.status === 'failed' ? `<p style="font-size: 12px; color: var(--danger);">Alasan: ${rec.reason}</p>` : ''}
+        if (current === 'pending' && typeof AppToast === 'function') {
+            AppToast('Gunakan tombol Berhasil atau Gagal untuk cek-in hari ini');
+        }
+    };
+
+    function renderCalendar(habit, todayStr) {
+        const monthNames = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ];
+        document.getElementById('calMonthYearLabel').innerText = `${monthNames[viewMonth]} ${viewYear}`;
+
+        const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
+        const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+        const grid = document.getElementById('habitCalendarGrid');
+
+        let html = '';
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            html += `<div class="cal-day-cell empty"></div>`;
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const status = getEffectiveDayStatus(habit, dateStr, todayStr);
+            const isToday = dateStr === todayStr;
+
+            let cls = 'cal-day-cell';
+            let clickAttr = '';
+
+            if (status === 'before' || status === 'future') {
+                cls += ' disabled';
+            } else {
+                clickAttr = `onclick="handleCalendarCellClick('${dateStr}')"`;
+                if (isToday) cls += ' is-today';
+                if (status === 'success') cls += ' status-success';
+                else if (status === 'failed') cls += ' status-failed';
+            }
+
+            html += `<div class="${cls}" ${clickAttr}>${day}</div>`;
+        }
+
+        grid.innerHTML = html;
+    }
+
+    function renderHabitPage() {
+        syncMissedDaysAsFailed();
+
+        const data = Storage.getUserData();
+        const habits = Array.isArray(data.habits) ? data.habits : [];
+        const todayStr = getTodayStr();
+
+        const emptyEl = document.getElementById('habitEmptyState');
+        const contentEl = document.getElementById('habitTrackerContent');
+
+        if (habits.length === 0) {
+            emptyEl.style.display = 'block';
+            contentEl.style.display = 'none';
+            return;
+        }
+
+        emptyEl.style.display = 'none';
+        contentEl.style.display = 'block';
+
+        if (!selectedHabitId || !habits.some(h => String(h.id) === String(selectedHabitId))) {
+            selectedHabitId = String(habits[0].id);
+        }
+
+        const selectorList = document.getElementById('habitSelectorList');
+        selectorList.innerHTML = habits.map(h => {
+            const isActive = String(h.id) === String(selectedHabitId);
+            return `
+                <button type="button" class="habit-chip ${isActive ? 'active' : ''}" onclick="selectHabit('${h.id}')">
+                    <span>${escapeHtml(h.icon || '🏃')}</span>
+                    <span>${escapeHtml(h.name)}</span>
+                </button>
+            `;
+        }).join('');
+
+        const activeHabit = habits.find(h => String(h.id) === String(selectedHabitId));
+        document.getElementById('activeHabitIcon').innerText = activeHabit.icon || '🏃';
+        document.getElementById('activeHabitName').innerText = activeHabit.name;
+        document.getElementById('activeHabitStart').innerText = `Mulai: ${formatIndoDate(activeHabit.startDate)}`;
+
+        // Status hari ini (terkunci setelah dipilih)
+        const todayStatus = getEffectiveDayStatus(activeHabit, todayStr, todayStr);
+        const isLockedToday = todayStatus === 'success' || todayStatus === 'failed';
+        const isBeforeStart = todayStatus === 'before';
+
+        const badgeEl = document.getElementById('todayStatusBadge');
+        const btnOk = document.getElementById('btnCheckSuccess');
+        const btnFail = document.getElementById('btnCheckFailed');
+
+        btnOk.classList.toggle('selected', todayStatus === 'success');
+        btnFail.classList.toggle('selected', todayStatus === 'failed');
+        btnOk.disabled = isLockedToday || isBeforeStart;
+        btnFail.disabled = isLockedToday || isBeforeStart;
+
+        if (todayStatus === 'success') {
+            badgeEl.className = 'habit-status-pill success';
+            badgeEl.innerText = '✅ Berhasil (Permanen)';
+        } else if (todayStatus === 'failed') {
+            badgeEl.className = 'habit-status-pill failed';
+            badgeEl.innerText = '❌ Gagal (Permanen)';
+        } else if (isBeforeStart) {
+            badgeEl.className = 'habit-status-pill pending';
+            badgeEl.innerText = '📅 Belum Dimulai';
+        } else {
+            badgeEl.className = 'habit-status-pill pending';
+            badgeEl.innerText = '⏳ Belum Cek-in';
+        }
+
+        // Statistik
+        const stats = calculateHabitStats(activeHabit, todayStr);
+        document.getElementById('statSuccessCount').innerText = stats.success;
+        document.getElementById('statFailedCount').innerText = stats.failed;
+        document.getElementById('statConsistencyPct').innerText = `${stats.pct}%`;
+        document.getElementById('statStreakCount').innerText = `${stats.streak}h`;
+
+        // Kalender
+        renderCalendar(activeHabit, todayStr);
+
+        // Daftar cek-in cepat semua habit
+        const quickList = document.getElementById('allHabitsQuickList');
+        quickList.innerHTML = habits.map(h => {
+            const st = getEffectiveDayStatus(h, todayStr, todayStr);
+            const hStats = calculateHabitStats(h, todayStr);
+            const canCheck = h.startDate <= todayStr;
+            const isLocked = st === 'success' || st === 'failed';
+
+            return `
+                <div class="quick-habit-row">
+                    <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; cursor: pointer;" onclick="selectHabit('${h.id}')">
+                        <span style="font-size: 20px;">${escapeHtml(h.icon || '🏃')}</span>
+                        <div style="min-width: 0;">
+                            <div style="font-size: 13px; font-weight: 700; color: var(--dark-grey); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${escapeHtml(h.name)}
+                            </div>
+                            <div style="font-size: 11px; color: var(--grey);">
+                                ✅ ${hStats.success} • ❌ ${hStats.failed} (${hStats.pct}%)
+                            </div>
+                        </div>
                     </div>
-                    <div style="font-weight: 700; font-size: 13px;">
-                        ${rec.status === 'success' ? '✅ Berhasil' : '❌ Gagal'}
-                    </div>
+                    ${canCheck ? `
+                        <div style="display: flex; gap: 5px; flex-shrink: 0;">
+                            <button type="button" class="quick-mini-btn ok ${st === 'success' ? 'active' : ''}" ${isLocked ? 'disabled' : `onclick="setHabitDayStatus('${h.id}', '${todayStr}', 'success')"`}>✔</button>
+                            <button type="button" class="quick-mini-btn no ${st === 'failed' ? 'active' : ''}" ${isLocked ? 'disabled' : `onclick="setHabitDayStatus('${h.id}', '${todayStr}', 'failed')"`}>✕</button>
+                        </div>
+                    ` : `<span style="font-size: 11px; color: var(--grey);">Mulai ${formatIndoDate(h.startDate)}</span>`}
                 </div>
-            ` + historyHtml;
-        }
-    });
-
-    // Hitung Current Streak secara akurat mundur dari hari ini / kemarin
-    let currentStreak = 0;
-    const todayStr = getLocalTodayStr();
-    const yesterdayObj = parseLocalYMD(todayStr);
-    yesterdayObj.setDate(yesterdayObj.getDate() - 1);
-    const yesterdayStr = formatLocalYMD(yesterdayObj);
-
-    let pointerStr = todayStr;
-    if (!records[pointerStr] || records[pointerStr].status !== 'success') {
-        if (records[pointerStr] && records[pointerStr].status === 'failed') {
-            pointerStr = null;
-        } else {
-            pointerStr = yesterdayStr;
-        }
+            `;
+        }).join('');
     }
 
-    if (pointerStr && records[pointerStr] && records[pointerStr].status === 'success') {
-        let cursor = parseLocalYMD(pointerStr);
-        while (true) {
-            const key = formatLocalYMD(cursor);
-            if (records[key] && records[key].status === 'success') {
-                currentStreak++;
-                cursor.setDate(cursor.getDate() - 1);
-            } else {
-                break;
+    window.editCurrentHabit = function () {
+        if (!selectedHabitId) return;
+        const data = Storage.getUserData();
+        const habit = (data.habits || []).find(h => String(h.id) === String(selectedHabitId));
+        if (!habit) return;
+
+        switchTabHabit('buat');
+        document.getElementById('formTitleHabit').innerText = 'Edit Habit';
+        document.getElementById('btnSubmitHabit').innerText = 'Simpan Perubahan';
+        document.getElementById('btnCancelEditHabit').style.display = 'inline-flex';
+
+        document.getElementById('habitId').value = habit.id;
+        document.getElementById('habitName').value = habit.name;
+        document.getElementById('habitIcon').value = habit.icon || '🏃';
+        document.getElementById('habitStartDate').value = habit.startDate || getTodayStr();
+    };
+
+    window.cancelEditHabit = function () {
+        document.getElementById('habitId').value = '';
+        document.getElementById('formTitleHabit').innerText = 'Buat Habit Baru';
+        document.getElementById('btnSubmitHabit').innerText = 'Simpan Habit';
+        document.getElementById('btnCancelEditHabit').style.display = 'none';
+        document.getElementById('habitForm').reset();
+        document.getElementById('habitIcon').value = '🏃';
+        document.getElementById('habitStartDate').value = getTodayStr();
+    };
+
+    window.deleteCurrentHabit = function () {
+        if (!selectedHabitId) return;
+        AppModal.show({
+            title: 'Hapus Habit',
+            message: 'Yakin ingin menghapus habit beserta seluruh riwayat kalendernya?',
+            type: 'confirm',
+            icon: '🗑️',
+            danger: true,
+            confirmText: 'Hapus',
+            onConfirm: () => {
+                const data = Storage.getUserData();
+                data.habits = (data.habits || []).filter(h => String(h.id) !== String(selectedHabitId));
+                Storage.saveUserData(data);
+                selectedHabitId = null;
+                renderHabitPage();
+                if (typeof AppToast === 'function') AppToast('Habit dihapus');
             }
+        });
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const habitForm = document.getElementById('habitForm');
+        if (habitForm) {
+            habitForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const id = document.getElementById('habitId').value;
+                const name = document.getElementById('habitName').value.trim();
+                const icon = document.getElementById('habitIcon').value.trim() || '🏃';
+                const startDate = document.getElementById('habitStartDate').value || getTodayStr();
+
+                const data = Storage.getUserData();
+                if (!Array.isArray(data.habits)) data.habits = [];
+
+                if (id) {
+                    const idx = data.habits.findIndex(h => String(h.id) === String(id));
+                    if (idx !== -1) {
+                        data.habits[idx].name = name;
+                        data.habits[idx].icon = icon;
+                        data.habits[idx].startDate = startDate;
+                        delete data.habits[idx].color;
+                        selectedHabitId = String(id);
+                    }
+                    cancelEditHabit();
+                    if (typeof AppToast === 'function') AppToast('Habit diperbarui');
+                } else {
+                    const newId = 'habit_' + Date.now();
+                    data.habits.push({
+                        id: newId,
+                        name: name,
+                        icon: icon,
+                        startDate: startDate,
+                        records: {}
+                    });
+                    selectedHabitId = newId;
+                    cancelEditHabit();
+                    if (typeof AppToast === 'function') AppToast('Habit baru ditambahkan');
+                }
+
+                Storage.saveUserData(data);
+                const startParts = startDate.split('-').map(Number);
+                if (startParts.length === 3) {
+                    viewYear = startParts[0];
+                    viewMonth = startParts[1] - 1;
+                }
+                switchTabHabit('tracker');
+            });
         }
-    }
 
-    document.getElementById('currentStreak').innerText = currentStreak;
-    document.getElementById('bestStreak').innerText = bestStreak;
-    document.getElementById('statSuccess').innerText = successCount;
-    document.getElementById('statFailed').innerText = failedCount;
-
-    const totalFills = successCount + failedCount;
-    const percent = totalFills === 0 ? 0 : (successCount / totalFills) * 100;
-
-    const bar = document.getElementById('statProgressBar');
-    bar.style.width = `${percent}%`;
-    bar.style.backgroundColor = themeColor;
-    document.getElementById('statPercent').innerText = `${percent.toFixed(0)}% Konsisten`;
-    document.getElementById('historyList').innerHTML = historyHtml || '<p class="text-center" style="font-size:12px; color:var(--grey);">Belum ada riwayat check-in bulan ini.</p>';
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('habitStartDate').value = getLocalTodayStr();
-    loadHabitSelect();
-});
+        document.getElementById('habitStartDate').value = getTodayStr();
+        renderHabitPage();
+    });
+})();

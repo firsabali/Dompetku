@@ -5,10 +5,173 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#1d4ed8">
-    <title>Keuangan - DompetKu</title>
+    <title>Catatan Keuangan - DompetKu</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        .filter-bar {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 0.9fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .summary-filter-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .summary-filter-card {
+            background: var(--white);
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 12px 14px;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+        }
+
+        .summary-filter-label {
+            font-size: 11px;
+            color: var(--grey);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .summary-filter-value {
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+        /* Daftar Item Belanja di Form */
+        .trx-items-wrapper {
+            background: var(--bg-app);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 14px;
+        }
+
+        .trx-item-row {
+            background: var(--white);
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .trx-item-top {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .trx-item-bottom {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 8px;
+        }
+
+        .mini-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--grey);
+            margin-bottom: 3px;
+        }
+
+        .trx-total-banner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1e3a8a;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-top: 10px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .trx-total-banner span:last-child {
+            font-size: 16px;
+            color: #1d4ed8;
+        }
+
+        /* Tampilan Rincian Item di Riwayat */
+        .trx-detail-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 8px 10px;
+            margin: 8px 0 10px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .trx-detail-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            padding-bottom: 5px;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        .trx-detail-line:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .trx-detail-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .trx-time-badge {
+            background: #e0f2fe;
+            color: #0369a1;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 6px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .trx-item-title {
+            color: #1e293b;
+            font-weight: 500;
+            word-break: break-word;
+        }
+
+        .trx-item-price {
+            color: #334155;
+            font-weight: 700;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .trx-count-pill {
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 999px;
+            margin-left: 4px;
+        }
+    </style>
 </head>
 
 <body>
@@ -20,66 +183,93 @@
         </div>
 
         <div class="tabs">
-            <button class="tab-btn active" id="btnTabTambah" onclick="switchTab('tambah')">Catat Baru</button>
-            <button class="tab-btn" id="btnTabRiwayat" onclick="switchTab('riwayat')">Riwayat</button>
+            <button type="button" class="tab-btn" id="btnTabCatat" onclick="switchTabTrx('catat')">Catat Baru</button>
+            <button type="button" class="tab-btn active" id="btnTabRiwayat"
+                onclick="switchTabTrx('riwayat')">Riwayat</button>
         </div>
 
-        <!-- TAB 1: FORM TAMBAH TRANSAKSI -->
-        <div id="tabTambah" class="tab-content active card">
-            <h3 id="formTitle">Tambah Transaksi</h3>
+        <!-- TAB 1: FORM CATAT / EDIT TRANSAKSI -->
+        <div id="tabCatat" class="tab-content card">
+            <h3 id="formTitleTrx">Catat Transaksi Baru</h3>
             <form id="transaksiForm">
-                <input type="hidden" id="txId">
+                <input type="hidden" id="trxId">
 
-                <div class="form-group">
-                    <label>Jenis Transaksi</label>
-                    <select id="txType" class="form-control" required>
-                        <option value="Pengeluaran">💸 Pengeluaran</option>
-                        <option value="Pemasukan">💰 Pemasukan</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Nominal (Rp)</label>
-                    <input type="number" id="txAmount" class="form-control" required min="1"
-                        placeholder="Contoh: 25000">
-                </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Kategori Utama</label>
-                        <select id="txCategory" class="form-control" required></select>
+                        <label>Jenis Transaksi</label>
+                        <select id="trxType" class="form-control" required onchange="updateCategoryOptions()">
+                            <option value="Pengeluaran">💸 Pengeluaran</option>
+                            <option value="Pemasukan">💰 Pemasukan</option>
+                        </select>
                     </div>
                     <div class="form-group">
-                        <label>Sub Kategori</label>
-                        <select id="txSubCategory" class="form-control" required></select>
+                        <label>Tanggal</label>
+                        <input type="date" id="trxDate" class="form-control" required>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Tanggal</label>
-                    <input type="date" id="txDate" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label>Keterangan</label>
-                    <input type="text" id="txDesc" class="form-control" required
-                        placeholder="Contoh: Makan siang nasi padang">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Kategori</label>
+                        <select id="trxCategory" class="form-control" required
+                            onchange="updateSubCategorySuggestions()"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Judul / Sub-Kategori</label>
+                        <input type="text" id="trxCategoryDetail" class="form-control" list="subCategoryList" required
+                            placeholder="Contoh: Sarapan, Belanja Harian">
+                        <datalist id="subCategoryList"></datalist>
+                    </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary mt-1" id="btnSubmitForm">Simpan Transaksi</button>
-                <button type="button" class="btn btn-outline mt-1" id="btnCancelEdit" style="display:none;"
-                    onclick="cancelEdit()">Batal Edit</button>
+                <!-- Rincian Item Belanja + Jam Otomatis -->
+                <div class="trx-items-wrapper">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-weight: 700; font-size: 13px; color: var(--dark-grey); margin: 0;">
+                            🧾 Rincian Belanja / Item
+                        </label>
+                        <span id="trxItemCountLabel" style="font-size: 11px; color: var(--grey); font-weight: 600;">1
+                            item</span>
+                    </div>
+                    <p style="font-size: 11px; color: var(--grey); margin-bottom: 10px;">
+                        Jika ada pengeluaran tambahan di hari yang sama, klik <strong>+ Tambah Belanja Lagi</strong>.
+                        Jam akan terisi otomatis.
+                    </p>
+
+                    <div id="trxItemsContainer"></div>
+
+                    <button type="button" class="btn btn-outline btn-sm"
+                        style="background: var(--white); width: 100%; justify-content: center;"
+                        onclick="addTrxItemRow('', '', null, true)">
+                        + Tambah Belanja Lagi
+                    </button>
+
+                    <div class="trx-total-banner">
+                        <span>Total Nominal Hari Ini:</span>
+                        <span id="trxTotalPreview">Rp 0</span>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary mt-1" id="btnSubmitTrx">Simpan Transaksi</button>
+                <button type="button" class="btn btn-outline mt-1" id="btnCancelEditTrx" style="display:none;"
+                    onclick="cancelEditTrx()">Batal Edit</button>
             </form>
         </div>
 
         <!-- TAB 2: RIWAYAT TRANSAKSI -->
-        <div id="tabRiwayat" class="tab-content">
-            <input type="text" id="searchTx" class="search-box" placeholder="Cari keterangan atau kategori...">
+        <div id="tabRiwayat" class="tab-content active">
+            <input type="text" id="searchTrx" class="search-box"
+                placeholder="Cari keterangan, item belanja, atau kategori...">
 
-            <div class="filters">
-                <select id="filterType">
-                    <option value="Semua">Semua Jenis</option>
+            <div class="filter-bar">
+                <select id="filterType" class="form-control" style="padding: 9px 10px; font-size: 13px;">
+                    <option value="all">Semua Jenis</option>
                     <option value="Pemasukan">Pemasukan</option>
                     <option value="Pengeluaran">Pengeluaran</option>
                 </select>
-                <select id="filterMonth">
-                    <option value="Semua">Semua Bulan</option>
+                <select id="filterMonth" class="form-control" style="padding: 9px 10px; font-size: 13px;">
+                    <option value="all">Semua Bulan</option>
                     <option value="01">Januari</option>
                     <option value="02">Februari</option>
                     <option value="03">Maret</option>
@@ -93,19 +283,17 @@
                     <option value="11">November</option>
                     <option value="12">Desember</option>
                 </select>
-                <select id="filterYear">
-                    <option value="Semua">Semua Tahun</option>
-                </select>
+                <select id="filterYear" class="form-control" style="padding: 9px 10px; font-size: 13px;"></select>
             </div>
 
-            <div class="stats-grid" style="margin-bottom: 12px;">
-                <div class="stat-card" style="padding: 12px;">
-                    <h3>Masuk (Filter)</h3>
-                    <div class="amount text-success" id="filteredIncome" style="font-size: 14px;">Rp 0</div>
+            <div class="summary-filter-grid">
+                <div class="summary-filter-card">
+                    <div class="summary-filter-label">Masuk (Filter)</div>
+                    <div class="summary-filter-value text-success" id="filteredIncome">Rp 0</div>
                 </div>
-                <div class="stat-card" style="padding: 12px;">
-                    <h3>Keluar (Filter)</h3>
-                    <div class="amount text-danger" id="filteredExpense" style="font-size: 14px;">Rp 0</div>
+                <div class="summary-filter-card">
+                    <div class="summary-filter-label">Keluar (Filter)</div>
+                    <div class="summary-filter-value text-danger" id="filteredExpense">Rp 0</div>
                 </div>
             </div>
 

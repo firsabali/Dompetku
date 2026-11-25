@@ -21,143 +21,165 @@
         </div>
 
         <div class="tabs">
-            <button class="tab-btn active" id="btnTabTracker" onclick="switchTabHabit('tracker')">Tracker &
-                Kalender</button>
-            <button class="tab-btn" id="btnTabTambah" onclick="switchTabHabit('tambah')">Habit Baru</button>
+            <button type="button" class="tab-btn active" id="btnTabTracker" onclick="switchTabHabit('tracker')">Tracker
+                & Kalender</button>
+            <button type="button" class="tab-btn" id="btnTabBuat" onclick="switchTabHabit('buat')">Habit Baru</button>
         </div>
 
-        <!-- TAB 1: TRACKER KALENDER & STATISTIK -->
+        <!-- TAB 1: TRACKER & KALENDER -->
         <div id="tabTracker" class="tab-content active">
-            <div class="form-group">
-                <select id="habitSelect" class="form-control" onchange="renderHabitData()">
-                    <option value="">-- Pilih Habit --</option>
-                </select>
+            <div id="habitEmptyState" class="card" style="display: none; text-align: center; padding: 24px 16px;">
+                <div style="font-size: 34px; margin-bottom: 8px;">📅</div>
+                <h3 style="margin-bottom: 6px;">Belum Ada Habit</h3>
+                <p style="font-size: 13px; color: var(--grey); margin-bottom: 14px;">
+                    Mulai bangun kebiasaan harian Anda. Cek-in berhasil akan berwarna hijau, sedangkan gagal atau
+                    terlewat otomatis berwarna merah.
+                </p>
+                <button type="button" class="btn btn-primary" onclick="switchTabHabit('buat')">+ Buat Habit
+                    Pertama</button>
             </div>
 
-            <div id="habitContent" style="display: none;">
-                <!-- Tombol Cepat Check-in Hari Ini -->
-                <button class="btn btn-primary mb-1" id="btnQuickTodayCheckIn" onclick="quickCheckInToday()">
-                    ✅ Check-in Hari Ini
-                </button>
+            <div id="habitTrackerContent">
+                <!-- Pemilih Habit Aktif -->
+                <div class="habit-selector-scroll" id="habitSelectorList"></div>
 
-                <!-- Streak Box -->
-                <div class="streak-box" id="streakBox">
-                    <div class="streak-item">
-                        <h4 id="currentStreak">0</h4>
-                        <p>🔥 Streak Saat Ini</p>
+                <!-- Kartu Cek-in Hari Ini -->
+                <div class="card" id="activeHabitCard">
+                    <div class="habit-header-row">
+                        <div class="habit-title-wrap">
+                            <span class="habit-emoji-badge" id="activeHabitIcon">🏃</span>
+                            <div>
+                                <h3 id="activeHabitName" style="margin: 0; font-size: 16px;">Nama Habit</h3>
+                                <p id="activeHabitStart"
+                                    style="margin: 2px 0 0 0; font-size: 11px; color: var(--grey);">Mulai: -</p>
+                            </div>
+                        </div>
+                        <div class="habit-head-actions">
+                            <button type="button" class="btn-icon btn-edit" onclick="editCurrentHabit()">Edit</button>
+                            <button type="button" class="btn-icon btn-delete"
+                                onclick="deleteCurrentHabit()">Hapus</button>
+                        </div>
                     </div>
-                    <div class="streak-item">
-                        <h4 id="bestStreak">0</h4>
-                        <p>🏆 Streak Terbaik</p>
+
+                    <div class="today-checkin-box">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <span style="font-size: 12px; font-weight: 700; color: var(--dark-grey);">Status Hari
+                                Ini</span>
+                            <span id="todayStatusBadge" class="habit-status-pill pending">⏳ Belum Cek-in</span>
+                        </div>
+                        <div class="checkin-btn-grid">
+                            <button type="button" class="btn-checkin success" id="btnCheckSuccess"
+                                onclick="setTodayHabitStatus('success')">
+                                ✔ Berhasil
+                            </button>
+                            <button type="button" class="btn-checkin failed" id="btnCheckFailed"
+                                onclick="setTodayHabitStatus('failed')">
+                                ✕ Gagal
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Statistik Konsistensi -->
+                    <div class="habit-stats-row">
+                        <div class="habit-stat-pill green">
+                            <span class="stat-num" id="statSuccessCount">0</span>
+                            <span class="stat-lbl">Berhasil</span>
+                        </div>
+                        <div class="habit-stat-pill red">
+                            <span class="stat-num" id="statFailedCount">0</span>
+                            <span class="stat-lbl">Gagal</span>
+                        </div>
+                        <div class="habit-stat-pill blue">
+                            <span class="stat-num" id="statConsistencyPct">0%</span>
+                            <span class="stat-lbl">Konsistensi</span>
+                        </div>
+                        <div class="habit-stat-pill amber">
+                            <span class="stat-num" id="statStreakCount">0</span>
+                            <span class="stat-lbl">Streak</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Kalender -->
+                <!-- Kalender Bulanan -->
                 <div class="card">
-                    <div class="calendar-header">
-                        <button class="btn-icon btn-edit" onclick="changeMonth(-1)">&#10094; Prev</button>
-                        <h4 id="monthYearLabel" style="margin:0;">Bulan Tahun</h4>
-                        <button class="btn-icon btn-edit" onclick="changeMonth(1)">Next &#10095;</button>
+                    <div class="cal-nav-header">
+                        <button type="button" class="cal-nav-btn" onclick="changeHabitMonth(-1)">‹</button>
+                        <strong id="calMonthYearLabel" style="font-size: 15px;">November 2026</strong>
+                        <button type="button" class="cal-nav-btn" onclick="changeHabitMonth(1)">›</button>
                     </div>
-                    <div class="calendar-grid">
-                        <div class="day-name">Min</div>
-                        <div class="day-name">Sen</div>
-                        <div class="day-name">Sel</div>
-                        <div class="day-name">Rab</div>
-                        <div class="day-name">Kam</div>
-                        <div class="day-name">Jum</div>
-                        <div class="day-name">Sab</div>
+
+                    <div class="cal-legend">
+                        <span><i class="legend-dot green"></i> Berhasil</span>
+                        <span><i class="legend-dot red"></i> Gagal / Tidak Cek-in</span>
+                        <span><i class="legend-dot today"></i> Hari Ini</span>
                     </div>
-                    <div class="calendar-grid" id="calendarDays"></div>
+
+                    <div class="cal-weekdays">
+                        <span>Min</span>
+                        <span>Sen</span>
+                        <span>Sel</span>
+                        <span>Rab</span>
+                        <span>Kam</span>
+                        <span>Jum</span>
+                        <span>Sab</span>
+                    </div>
+                    <div class="cal-days-grid" id="habitCalendarGrid"></div>
+
+                    <p style="font-size: 11px; color: var(--grey); text-align: center; margin: 10px 0 0 0;">
+                        Status tanggal yang sudah hijau (Berhasil) atau merah (Gagal) bersifat permanen dan tidak dapat
+                        diubah kembali.
+                    </p>
                 </div>
 
-                <!-- Statistik -->
+                <!-- Daftar Semua Habit Hari Ini -->
                 <div class="card">
-                    <div class="section-title">Statistik Keseluruhan</div>
-                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
-                        <span class="text-success">✅ Berhasil: <strong id="statSuccess">0</strong></span>
-                        <span class="text-danger">❌ Gagal: <strong id="statFailed">0</strong></span>
+                    <div class="section-title">
+                        <span>📋 Cek-in Cepat Semua Habit</span>
                     </div>
-                    <div class="progress-container">
-                        <div id="statProgressBar" class="progress-bar success" style="width: 0%;"></div>
-                    </div>
-                    <p style="text-align: right; font-size: 11px; color: var(--grey);" id="statPercent">0% Sukses</p>
+                    <div id="allHabitsQuickList"></div>
                 </div>
-
-                <!-- Riwayat & Hapus -->
-                <div class="card">
-                    <div class="section-title">Riwayat Bulan Ini</div>
-                    <div id="historyList"></div>
-
-                    <hr style="border: 0; border-top: 1px solid var(--light-grey); margin: 18px 0 12px;">
-                    <button class="btn btn-outline"
-                        style="border-color: var(--danger); color: var(--danger); font-size: 13px;"
-                        onclick="deleteCurrentHabit()">
-                        🗑️ Hapus Habit Ini
-                    </button>
-                </div>
-            </div>
-
-            <div id="emptyHabitMsg" class="card text-center" style="color: var(--grey); font-size: 13px;">
-                Pilih atau buat kebiasaan baru pada tab <strong>Habit Baru</strong>.
             </div>
         </div>
 
-        <!-- TAB 2: FORM TAMBAH HABIT -->
-        <div id="tabTambah" class="tab-content card">
-            <h3>Buat Habit Baru</h3>
+        <!-- TAB 2: FORM BUAT / EDIT HABIT -->
+        <div id="tabBuat" class="tab-content card">
+            <h3 id="formTitleHabit" style="margin-bottom: 12px;">Buat Habit Baru</h3>
             <form id="habitForm">
+                <input type="hidden" id="habitId">
+
                 <div class="form-group">
                     <label>Nama Habit</label>
                     <input type="text" id="habitName" class="form-control" required
                         placeholder="Contoh: Olahraga 30 Menit, Baca Buku">
                 </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>Ikon (Emoji)</label>
-                        <input type="text" id="habitEmoji" class="form-control" required placeholder="🏃" maxlength="4">
+                        <input type="text" id="habitIcon" class="form-control" maxlength="4" value="🏃" required
+                            placeholder="🏃">
                     </div>
                     <div class="form-group">
-                        <label>Warna Tema</label>
-                        <input type="color" id="habitColor" class="form-control" value="#16a34a"
-                            style="height: 44px; padding: 4px;">
+                        <label>Mulai Tanggal</label>
+                        <input type="date" id="habitStartDate" class="form-control" required>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Mulai Tanggal</label>
-                    <input type="date" id="habitStartDate" class="form-control" required>
+
+                <div class="habit-color-rule-box">
+                    <div>🟩 <strong>Berhasil:</strong> Otomatis berwarna hijau saat cek-in dan terkunci permanen.</div>
+                    <div>🟥 <strong>Gagal / Tidak Cek-in:</strong> Otomatis dihitung gagal dan berwarna merah permanen
+                        jika terlewat.</div>
                 </div>
-                <button type="submit" class="btn btn-primary mt-1">Simpan Habit</button>
+
+                <button type="submit" class="btn btn-primary mt-1" id="btnSubmitHabit">Simpan Habit</button>
+                <button type="button" class="btn btn-outline mt-1" id="btnCancelEditHabit" style="display: none;"
+                    onclick="cancelEditHabit()">Batal Edit</button>
             </form>
         </div>
     </div>
 
-    <!-- MODAL CHECK-IN HARIAN -->
-    <div class="modal-overlay" id="checkInModal">
-        <div class="modal-box">
-            <h3 class="text-center" style="margin-bottom: 4px;" id="modalTitle">Check-in Habit</h3>
-            <p class="text-center" style="font-size: 13px; color: var(--grey); margin-bottom: 14px;" id="modalDesc">
-                Apakah kamu melakukannya pada tanggal ini?</p>
-
-            <div class="modal-actions">
-                <button class="btn btn-success" onclick="submitCheckIn('success')">✅ Berhasil</button>
-                <button class="btn btn-danger" onclick="showReasonInput()">❌ Gagal</button>
-            </div>
-
-            <div id="reasonBox" style="display: none; margin-top: 14px;">
-                <label style="font-size: 12px; font-weight: 700;">Alasan tidak melakukan:</label>
-                <input type="text" id="failReason" class="form-control mt-1" placeholder="Tuliskan alasan singkat...">
-                <button class="btn btn-primary mt-1" onclick="submitCheckIn('failed')">Simpan Alasan</button>
-            </div>
-
-            <div style="display: flex; gap: 8px; margin-top: 12px;">
-                <button class="btn btn-outline btn-sm" style="flex: 1; color: var(--grey);"
-                    onclick="clearCheckIn()">Reset Tanggal</button>
-                <button class="btn btn-outline btn-sm" style="flex: 1;" onclick="closeModal()">Tutup</button>
-            </div>
-        </div>
-    </div>
-
+    <!-- Navigasi Bawah -->
     <nav class="bottom-nav">
         <a href="dashboard.html" class="nav-item">
             <svg class="nav-icon" viewBox="0 0 24 24">
